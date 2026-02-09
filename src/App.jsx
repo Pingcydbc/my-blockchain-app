@@ -62,7 +62,7 @@ function App() {
 
     const fetchTransactions = async (address) => {
         try {
-            const res = await axios.get(`http://localhost:5000/transactions?address=${address}`);
+            const res = await axios.get(`https://my-blockchain-app-back.vercel.app/transactions?address=${address}`);
             if (res.data.success) setTransactions(res.data.transactions);
         } catch (e) { console.error(e); }
     };
@@ -76,7 +76,7 @@ function App() {
 
     const handleLogin = async () => {
         try {
-            const res = await axios.post('http://localhost:5000/login', formData);
+            const res = await axios.post('https://my-blockchain-app-back.vercel.app/login', formData);
             setUser(res.data);
             setView('dashboard');
             Swal.fire({ icon: 'success', title: 'ยินดีต้อนรับ', showConfirmButton: false, timer: 1500 });
@@ -87,7 +87,7 @@ function App() {
         if (!walletInfo.to || !walletInfo.amount) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
         Swal.fire({ title: 'กำลังส่งเหรียญ...', didOpen: () => Swal.showLoading() });
         try {
-            await axios.post('http://localhost:5000/transfer', {
+            await axios.post('https://my-blockchain-app-back.vercel.app/transfer', {
                 fromUsername: user.username,
                 toAddress: walletInfo.to,
                 amount: walletInfo.amount
