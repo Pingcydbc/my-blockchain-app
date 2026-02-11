@@ -9,17 +9,18 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 const GlobalStyles = () => (
     <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; color: #000; }
         html, body, #root { width: 100%; height: 100%; background: #F7FAFC; overflow: hidden; }
-        input { color: #000 !important; font-size: 16px !important; font-weight: 800 !important; outline: none; }
-        button { font-weight: 800 !important; transition: all 0.2s; cursor: pointer; }
+        input { color: #000 !important; font-size: 16px !important; font-weight: 800 !important; outline: none; border: 2px solid #E2E8F0; }
+        input::placeholder { color: #A0AEC0; }
+        button { font-weight: 800 !important; transition: all 0.2s; cursor: pointer; border: none; }
         button:active { transform: scale(0.95); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 10px; }
         #reader { border: none !important; border-radius: 20px; overflow: hidden; }
         #reader__scan_region { background: #000; }
         #reader__dashboard_section_csr button { 
-            padding: 8px 15px; background: #4A90E2; color: white; border: none; border-radius: 10px; margin-top: 10px;
+            padding: 8px 15px; background: #4A90E2; color: #fff !important; border: none; border-radius: 10px; margin-top: 10px;
         }
     `}</style>
 );
@@ -40,7 +41,6 @@ function App() {
     const CONTRACT_OERC = "0x718dF080ddCB27Ee16B482c638f9Ed4b11e7Daf4";
     const API_BASE = "https://my-blockchain-app-back.vercel.app";
 
-    // --- 1. ฟังก์ชันดึงข้อมูล ---
     const fetchData = useCallback(async (address, showToast = false) => {
         if (!address) return;
         setIsRefreshing(true);
@@ -61,7 +61,6 @@ function App() {
         } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
     }, [API_BASE]);
 
-    // --- 2. ระบบสแกน QR Code ---
     useEffect(() => {
         if (showScanner) {
             const scanner = new Html5QrcodeScanner("reader", {
@@ -81,7 +80,6 @@ function App() {
         };
     }, [showScanner]);
 
-    // --- 3. การจัดการ Session ---
     useEffect(() => {
         const savedUser = localStorage.getItem('oerc_user');
         if (savedUser) {
@@ -94,7 +92,6 @@ function App() {
         if (user && user.wallet_address) fetchData(user.wallet_address);
     }, [user, fetchData, activeTab]);
 
-    // --- 4. ฟังก์ชันระบบ ---
     const handleLogin = async () => {
         if (!formData.username || !formData.password) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
         try {
@@ -102,7 +99,6 @@ function App() {
             localStorage.setItem('oerc_user', JSON.stringify(res.data));
             setUser(res.data);
             setView('dashboard');
-            Swal.fire({ icon: 'success', title: 'ยินดีต้อนรับ', timer: 1500, showConfirmButton: false });
         } catch (e) { Swal.fire('ผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error'); }
     };
 
@@ -115,41 +111,9 @@ function App() {
         } catch (e) { Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error'); }
     };
 
-    const handleLogout = () => {
-        Swal.fire({
-            title: 'ยืนยันการออกจากระบบ?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'ใช่, ออกจากระบบ',
-            cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                localStorage.removeItem('oerc_user');
-                setUser(null);
-                setBalance('0');
-                setTransactions([]);
-                setView('login');
-            }
-        });
-    };
-
-    const handleGenerateWallet = async () => {
-        Swal.fire({ title: 'กำลังสร้างกระเป๋า...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        try {
-            const res = await axios.post(`${API_BASE}/generate-wallet`, { username: user.username });
-            if (res.data.address) {
-                const updatedUser = { ...user, wallet_address: res.data.address };
-                localStorage.setItem('oerc_user', JSON.stringify(updatedUser));
-                setUser(updatedUser);
-                await Swal.fire({ icon: 'success', title: 'สำเร็จ!', timer: 1500, showConfirmButton: false });
-                window.location.reload();
-            }
-        } catch (e) { Swal.close(); Swal.fire('ผิดพลาด', 'สร้างกระเป๋าไม่สำเร็จ', 'error'); }
-    };
-
     const handleTransfer = async () => {
         if (!walletInfo.to || !walletInfo.amount) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
-        const confirm = await Swal.fire({ title: 'ยืนยันการโอน?', text: `โอน ${walletInfo.amount} OERC?`, icon: 'question', showCancelButton: true });
+        const confirm = await Swal.fire({ title: 'ยืนยันการโอน?', text: `คุณต้องการโอน ${walletInfo.amount} OERC?`, icon: 'question', showCancelButton: true });
         if (!confirm.isConfirmed) return;
 
         Swal.fire({ title: 'กำลังประมวลผล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -159,23 +123,24 @@ function App() {
                 toAddress: walletInfo.to,
                 amount: walletInfo.amount
             });
-            Swal.fire({ icon: 'success', title: 'โอนสำเร็จ!', text: `Hash: ${res.data.hash.substring(0,15)}...` });
+            Swal.fire('สำเร็จ!', `โอนแล้ว Hash: ${res.data.hash.substring(0,10)}...`, 'success');
             setWalletInfo({ to: '', amount: '' });
             fetchData(user.wallet_address);
-        } catch (e) { Swal.fire('ล้มเหลว', 'ยอดเงินไม่พอหรือเกิดข้อผิดพลาด', 'error'); }
+        } catch (e) { Swal.fire('ล้มเหลว', 'โอนไม่สำเร็จ', 'error'); }
     };
 
-    // --- UI Rendering ---
     if (view === 'login') {
         return (
             <div style={loginContainerStyle}>
                 <GlobalStyles />
                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={loginCardStyle}>
-                    <h1 style={{ fontWeight: '800', fontSize: '36px' }}>OERC</h1>
-                    <p style={{ color: '#666', margin: '10px 0 30px 0' }}>{isRegistering ? 'สร้างบัญชีใหม่' : 'เข้าสู่ระบบ IT-CMTC'}</p>
+                    <h1 style={{ fontWeight: '800', fontSize: '42px' }}>OERC</h1>
+                    <p style={{ margin: '10px 0 30px 0', fontWeight: '800' }}>{isRegistering ? 'สร้างบัญชีใหม่' : 'เข้าสู่ระบบ IT-CMTC'}</p>
                     <input placeholder="Username" onChange={e => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
                     <input type="password" placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} style={inputStyle} />
-                    <button onClick={isRegistering ? handleRegister : handleLogin} style={primaryBtnStyle}>{isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</button>
+                    <button onClick={isRegistering ? handleRegister : handleLogin} style={primaryBtnStyle}>
+                        <span style={{color: '#fff'}}>{isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</span>
+                    </button>
                     <p onClick={() => setIsRegistering(!isRegistering)} style={toggleLinkStyle}>
                         {isRegistering ? 'มีบัญชีแล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่'}
                     </p>
@@ -194,29 +159,29 @@ function App() {
                     <SidebarItem active={activeTab === 'transfer'} onClick={() => setActiveTab('transfer')} label="โอนเหรียญ" icon="💸" />
                     <SidebarItem active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="ประวัติธุรกรรม" icon="📜" />
                 </div>
-                <button onClick={handleLogout} style={logoutBtnStyle}>ออกจากระบบ</button>
+                <button onClick={() => { localStorage.clear(); window.location.reload(); }} style={logoutBtnStyle}>ออกจากระบบ</button>
             </div>
 
             <div style={{ flex: 1, padding: '40px', background: '#F7FAFC', overflowY: 'auto' }}>
                 <div style={headerStyle}>
                     <div><h2 style={{ fontWeight: '800', fontSize: '28px' }}>สวัสดี, {user?.username}</h2></div>
                     {user?.wallet_address && (
-                        <div onClick={() => { navigator.clipboard.writeText(user.wallet_address); Swal.fire({ icon:'success', title:'คัดลอกแล้ว', toast:true, position:'top-end', showConfirmButton:false, timer:2000 }); }} style={walletBadgeStyle}>
-                            📍 {user.wallet_address.substring(0, 8)}...{user.wallet_address.slice(-4)}
+                        <div onClick={() => { navigator.clipboard.writeText(user.wallet_address); Swal.fire({icon:'success', title:'คัดลอกแล้ว', toast:true, position:'top-end', showConfirmButton:false, timer:1500}); }} style={walletBadgeStyle}>
+                            <span style={{fontWeight: '800'}}>📍 {user.wallet_address.substring(0, 8)}...{user.wallet_address.slice(-4)}</span>
                         </div>
                     )}
                 </div>
 
                 <AnimatePresence mode="wait">
-                    <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                    <motion.div key={activeTab}>
                         {activeTab === 'overview' && (
                             <div style={overviewGrid}>
                                 <div style={balanceCard}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <p style={{ fontWeight: '800' }}>ยอดเงินคงเหลือ</p>
+                                        <p style={{ fontWeight: '800', color: '#fff' }}>ยอดเงินคงเหลือ</p>
                                         <button onClick={() => fetchData(user.wallet_address, true)} style={refreshBtnStyle}>{isRefreshing ? '⌛' : '🔄'}</button>
                                     </div>
-                                    <h1 style={{ fontSize: '56px', fontWeight: '800', margin: '15px 0' }}>{balance} <span style={{fontSize:'24px'}}>OERC</span></h1>
+                                    <h1 style={{ fontSize: '56px', fontWeight: '800', margin: '15px 0', color: '#fff' }}>{balance} <span style={{fontSize:'24px'}}>OERC</span></h1>
                                 </div>
                                 <div style={statusCard}>
                                     <p style={{ fontWeight: '800', marginBottom: '15px' }}>QR Code รับเงิน</p>
@@ -237,15 +202,13 @@ function App() {
                                 <input placeholder="0x..." value={walletInfo.to} onChange={e => setWalletInfo({ ...walletInfo, to: e.target.value })} style={inputStyle} />
                                 <label style={labelStyle}>จำนวน</label>
                                 <input type="number" placeholder="0.00" value={walletInfo.amount} onChange={e => setWalletInfo({ ...walletInfo, amount: e.target.value })} style={inputStyle} />
-                                <button onClick={handleTransfer} style={primaryBtnStyle}>ยืนยันการโอน</button>
+                                <button onClick={handleTransfer} style={primaryBtnStyle}><span style={{color:'#fff'}}>ยืนยันการโอน</span></button>
 
                                 {showScanner && (
                                     <div style={scannerOverlayStyle}>
                                         <div style={scannerContentStyle}>
-                                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}>
-                                                <h3 style={{fontWeight:'800'}}>สแกนที่อยู่ผู้รับ</h3>
-                                                <button onClick={() => setShowScanner(false)} style={{border:'none', background:'none', fontSize:'24px'}}>×</button>
-                                            </div>
+                                            <button onClick={() => setShowScanner(false)} style={{float:'right', border:'none', background:'none', fontSize:'24px', cursor:'pointer'}}>×</button>
+                                            <h3 style={{fontWeight:'800', marginBottom:'15px'}}>สแกนที่อยู่ผู้รับ</h3>
                                             <div id="reader"></div>
                                         </div>
                                     </div>
@@ -269,7 +232,6 @@ function App() {
                                                 <p style={{ fontWeight: '800', fontSize: '18px', color: isSent ? '#E53E3E' : '#38A169' }}>
                                                     {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', 18)}
                                                 </p>
-                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#4A90E2', textDecoration: 'none', fontWeight: '800' }}>View ↗</a>
                                             </div>
                                         </div>
                                     );
@@ -288,25 +250,25 @@ const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 0', bo
 const loginContainerStyle = { display: 'flex', width: '100vw', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#F0F2F5' };
 const loginCardStyle = { padding: '50px 40px', background: '#fff', borderRadius: '40px', width: '450px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.1)' };
 const inputStyle = { width: '100%', padding: '18px', marginBottom: '15px', borderRadius: '18px', border: '2px solid #E2E8F0', background: '#F8FAFC', fontWeight: '800' };
-const primaryBtnStyle = { width: '100%', padding: '18px', background: '#4A90E2', color: '#fff', border: 'none', borderRadius: '18px', cursor: 'pointer', fontWeight: '800' };
-const walletBadgeStyle = { background: '#fff', padding: '12px 25px', borderRadius: '50px', border: '2px solid #E2E8F0', cursor: 'pointer', fontWeight: '800' };
+const primaryBtnStyle = { width: '100%', padding: '18px', background: '#4A90E2', border: 'none', borderRadius: '18px', cursor: 'pointer', fontWeight: '800' };
+const walletBadgeStyle = { background: '#fff', padding: '12px 25px', borderRadius: '50px', border: '2px solid #E2E8F0', cursor: 'pointer' };
 const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '50px', maxWidth: '1100px', margin: '0 auto 50px auto' };
-const toggleLinkStyle = { color: '#4A90E2', marginTop: '25px', cursor: 'pointer', fontWeight: '800', fontSize: '14px' };
-const logoutBtnStyle = { margin: '0 20px', padding: '16px', background: '#FFF5F5', color: '#C53030', border: 'none', borderRadius: '15px', cursor: 'pointer', fontWeight: '800' };
+const toggleLinkStyle = { color: '#4A90E2', marginTop: '25px', cursor: 'pointer', fontWeight: '800' };
+const logoutBtnStyle = { margin: '0 20px', padding: '16px', background: '#FFF5F5', color: '#C53030', border: 'none', borderRadius: '15px', fontWeight: '800' };
 const overviewGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px', maxWidth: '1100px', margin: '0 auto' };
-const balanceCard = { background: 'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)', padding: '40px', borderRadius: '35px', color: '#fff' };
+const balanceCard = { background: 'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)', padding: '40px', borderRadius: '35px' };
 const statusCard = { background: '#fff', padding: '40px', borderRadius: '35px', border: '1px solid #E2E8F0', textAlign: 'center' };
 const cardContainer = { background: '#fff', padding: '40px', borderRadius: '35px', border: '1px solid #E2E8F0', maxWidth: '900px', margin: '0 auto' };
-const labelStyle = { display: 'block', marginBottom: '10px', fontWeight: '800', fontSize: '14px' };
-const refreshBtnStyle = { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: '35px', height: '35px', borderRadius: '10px', cursor: 'pointer' };
-const txCardStyle = { display: 'flex', alignItems: 'center', padding: '20px', borderRadius: '22px', background: '#F8FAFC', marginBottom: '15px' };
+const labelStyle = { display: 'block', marginBottom: '10px', fontWeight: '800' };
+const refreshBtnStyle = { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: '35px', height: '35px', borderRadius: '10px' };
+const scanBtnStyle = { padding: '10px 20px', background: '#F0F4F8', border: 'none', borderRadius: '12px', color: '#4A90E2', fontWeight: '800' };
+const scannerOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 };
+const scannerContentStyle = { background: '#fff', padding: '25px', borderRadius: '30px', width: '90%', maxWidth: '500px' };
+const txCardStyle = { display: 'flex', alignItems: 'center', padding: '20px', borderRadius: '22px', background: '#fff', border: '1px solid #F0F4F8', marginBottom: '15px' };
 const iconCircle = { width: '55px', height: '55px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' };
-const scanBtnStyle = { padding: '10px 20px', background: '#F0F4F8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '800', color: '#4A90E2' };
-const scannerOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' };
-const scannerContentStyle = { background: '#fff', padding: '25px', borderRadius: '30px', width: '100%', maxWidth: '500px' };
 
 const SidebarItem = ({ active, label, icon, onClick }) => (
-    <div onClick={onClick} style={{ margin: '0 15px 8px 15px', padding: '16px 20px', cursor: 'pointer', borderRadius: '18px', background: active ? '#4A90E2' : 'transparent', color: active ? '#fff' : '#666', fontWeight: '800', display: 'flex', gap: '15px', alignItems: 'center' }}>
+    <div onClick={onClick} style={{ margin: '0 15px 8px 15px', padding: '16px 20px', cursor: 'pointer', borderRadius: '18px', background: active ? '#4A90E2' : 'transparent', color: active ? '#fff' : '#000', fontWeight: '800', display: 'flex', gap: '15px', alignItems: 'center' }}>
         <span style={{ fontSize: '20px' }}>{icon}</span> {label}
     </div>
 );
