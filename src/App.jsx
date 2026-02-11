@@ -29,10 +29,12 @@ function App() {
     const CONTRACT_OERC = "0x718dF080ddCB27Ee16B482c638f9Ed4b11e7Daf4";
     const API_BASE = "https://my-blockchain-app-back.vercel.app";
 
-    // --- 1. ฟังก์ชันดึงข้อมูล (Balance & Transactions) ---
+    // --- 1. ฟังก์ชันดึงข้อมูล (ดึงใหม่และล้างของเก่าเสมอ) ---
     const fetchData = useCallback(async (address) => {
+        // ล้างข้อมูลเก่าทิ้งทันทีเพื่อให้ UI เป็นปัจจุบัน
         setBalance('0');
         setTransactions([]);
+        
         if (!address) return;
 
         try {
@@ -44,7 +46,8 @@ function App() {
 
             const res = await axios.get(`${API_BASE}/transactions?address=${address}`);
             if (res.data && res.data.success) {
-                setTransactions(res.data.transactions || []);
+                // มั่นใจว่าเป็น Array และป้องกันหน้าจอมืด
+                setTransactions(Array.isArray(res.data.transactions) ? res.data.transactions : []);
             }
         } catch (e) {
             console.error("Data Fetch Error:", e);
@@ -65,33 +68,32 @@ function App() {
         if (user && user.wallet_address) {
             fetchData(user.wallet_address);
         } else {
+            // ล้างข้อมูลหน้าจอหากไม่มีข้อมูลกระเป๋า
             setBalance('0');
             setTransactions([]);
         }
     }, [user, fetchData, activeTab]);
 
-    // --- 3. ฟังก์ชันระบบ (Auth & Wallet) ---
+    // --- 3. ฟังก์ชันระบบ ---
     const handleLogin = async () => {
-        if (!formData.username || !formData.password) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
         try {
             const res = await axios.post(`${API_BASE}/login`, formData);
             localStorage.setItem('oerc_user', JSON.stringify(res.data));
             setUser(res.data);
             setView('dashboard');
             Swal.fire({ icon: 'success', title: 'ยินดีต้อนรับ', timer: 1500, showConfirmButton: false });
-        } catch (e) {
-            Swal.fire('ผิดพลาด', e.response?.data?.message || 'Login ไม่สำเร็จ', 'error');
+        } catch (e) { 
+            Swal.fire('ผิดพลาด', 'เข้าสู่ระบบไม่สำเร็จ', 'error'); 
         }
     };
 
     const handleRegister = async () => {
-        if (!formData.username || !formData.password) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
         try {
             await axios.post(`${API_BASE}/register`, formData);
             Swal.fire('สำเร็จ', 'สมัครสมาชิกแล้ว กรุณาเข้าสู่ระบบ', 'success');
             setIsRegistering(false);
-        } catch (e) {
-            Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error');
+        } catch (e) { 
+            Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error'); 
         }
     };
 
@@ -128,7 +130,7 @@ function App() {
                 const updatedUser = { ...user, wallet_address: res.data.address };
                 localStorage.setItem('oerc_user', JSON.stringify(updatedUser));
                 setUser(updatedUser);
-                await Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'สร้างกระเป๋าสำเร็จ กำลังรีโหลด...', timer: 1500, showConfirmButton: false });
+                await Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'สร้างกระเป๋าสำเร็จ', timer: 1500, showConfirmButton: false });
                 window.location.reload();
             }
         } catch (e) {
@@ -147,10 +149,10 @@ function App() {
                 amount: walletInfo.amount
             });
             Swal.fire('สำเร็จ!', 'โอนเหรียญเรียบร้อย', 'success');
-            setWalletInfo({ to: '', amount: '' }); // ล้างช่องกรอกข้อมูล
+            setWalletInfo({ to: '', amount: '' });
             fetchData(user.wallet_address);
         } catch (e) {
-            Swal.fire('ล้มเหลว', 'โอนไม่สำเร็จ: ' + (e.response?.data?.error || ''), 'error');
+            Swal.fire('ล้มเหลว', 'โอนไม่สำเร็จ', 'error');
         }
     };
 
@@ -279,7 +281,6 @@ function App() {
     );
 }
 
-// --- Styles & Helper Components ---
 const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 20px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' };
 const loginContainerStyle = { display: 'flex', width: '100vw', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#F0F2F5' };
 const loginCardStyle = { padding: '40px', background: '#fff', borderRadius: '30px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
