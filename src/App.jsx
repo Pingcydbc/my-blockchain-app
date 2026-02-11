@@ -29,11 +29,10 @@ function App() {
     const CONTRACT_OERC = "0x718dF080ddCB27Ee16B482c638f9Ed4b11e7Daf4";
     const API_BASE = "https://my-blockchain-app-back.vercel.app";
 
+    // --- 1. ฟังก์ชันดึงข้อมูล (Balance & Transactions) ---
     const fetchData = useCallback(async (address) => {
-        // 🟢 ล้างข้อมูลเก่าก่อนเริ่มโหลดใหม่
         setBalance('0');
         setTransactions([]);
-
         if (!address) return;
 
         try {
@@ -52,6 +51,7 @@ function App() {
         }
     }, [API_BASE]);
 
+    // --- 2. การจัดการ Session และการติดตาม State ---
     useEffect(() => {
         const savedUser = localStorage.getItem('oerc_user');
         if (savedUser) {
@@ -65,11 +65,35 @@ function App() {
         if (user && user.wallet_address) {
             fetchData(user.wallet_address);
         } else {
-            // 🟢 ล้างข้อมูลหากไม่มีที่อยู่กระเป๋า
             setBalance('0');
             setTransactions([]);
         }
     }, [user, fetchData, activeTab]);
+
+    // --- 3. ฟังก์ชันระบบ (Auth & Wallet) ---
+    const handleLogin = async () => {
+        if (!formData.username || !formData.password) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
+        try {
+            const res = await axios.post(`${API_BASE}/login`, formData);
+            localStorage.setItem('oerc_user', JSON.stringify(res.data));
+            setUser(res.data);
+            setView('dashboard');
+            Swal.fire({ icon: 'success', title: 'ยินดีต้อนรับ', timer: 1500, showConfirmButton: false });
+        } catch (e) {
+            Swal.fire('ผิดพลาด', e.response?.data?.message || 'Login ไม่สำเร็จ', 'error');
+        }
+    };
+
+    const handleRegister = async () => {
+        if (!formData.username || !formData.password) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
+        try {
+            await axios.post(`${API_BASE}/register`, formData);
+            Swal.fire('สำเร็จ', 'สมัครสมาชิกแล้ว กรุณาเข้าสู่ระบบ', 'success');
+            setIsRegistering(false);
+        } catch (e) {
+            Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error');
+        }
+    };
 
     const handleLogout = () => {
         Swal.fire({
@@ -77,7 +101,6 @@ function App() {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#4A90E2',
-            cancelButtonColor: '#E53E3E',
             confirmButtonText: 'ใช่, ออกจากระบบ',
             cancelButtonText: 'ยกเลิก',
             reverseButtons: true
@@ -92,90 +115,171 @@ function App() {
         });
     };
 
-    // ... handleLogin, handleRegister, handleGenerateWallet, handleTransfer เหมือนเดิม ...
-    // (ข้ามไปส่วน UI เพื่อความกระชับ)
+    const handleGenerateWallet = async () => {
+        Swal.fire({
+            title: 'กำลังสร้างกระเป๋า...',
+            text: 'กรุณารอสักครู่ ระบบกำลังบันทึกข้อมูลลงบล็อกเชน',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+        try {
+            const res = await axios.post(`${API_BASE}/generate-wallet`, { username: user.username });
+            if (res.data.address) {
+                const updatedUser = { ...user, wallet_address: res.data.address };
+                localStorage.setItem('oerc_user', JSON.stringify(updatedUser));
+                setUser(updatedUser);
+                await Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: 'สร้างกระเป๋าสำเร็จ กำลังรีโหลด...', timer: 1500, showConfirmButton: false });
+                window.location.reload();
+            }
+        } catch (e) {
+            Swal.close();
+            Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการสร้างกระเป๋า', 'error');
+        }
+    };
+
+    const handleTransfer = async () => {
+        if (!walletInfo.to || !walletInfo.amount) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
+        Swal.fire({ title: 'กำลังส่งเหรียญ...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+        try {
+            await axios.post(`${API_BASE}/transfer`, {
+                fromUsername: user.username,
+                toAddress: walletInfo.to,
+                amount: walletInfo.amount
+            });
+            Swal.fire('สำเร็จ!', 'โอนเหรียญเรียบร้อย', 'success');
+            setWalletInfo({ to: '', amount: '' }); // ล้างช่องกรอกข้อมูล
+            fetchData(user.wallet_address);
+        } catch (e) {
+            Swal.fire('ล้มเหลว', 'โอนไม่สำเร็จ: ' + (e.response?.data?.error || ''), 'error');
+        }
+    };
+
+    // --- 4. การแสดงผล UI ---
+    if (view === 'login') {
+        return (
+            <div style={loginContainerStyle}>
+                <GlobalStyles />
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={loginCardStyle}>
+                    <h1 style={{ color: '#000', fontWeight: '800', fontSize: '36px' }}>OERC</h1>
+                    <p style={{ color: '#000', margin: '20px 0', fontWeight: '800' }}>
+                        {isRegistering ? 'สร้างบัญชีใหม่' : 'เข้าสู่ระบบ IT-CMTC'}
+                    </p>
+                    <input placeholder="Username" onChange={e => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
+                    <input type="password" placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} style={inputStyle} />
+                    <button onClick={isRegistering ? handleRegister : handleLogin} style={primaryBtnStyle}>
+                        {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+                    </button>
+                    <p onClick={() => setIsRegistering(!isRegistering)} style={toggleLinkStyle}>
+                        {isRegistering ? 'มีบัญชีแล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่'}
+                    </p>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
             <GlobalStyles />
-            {view === 'login' ? (
-                /* Login UI */
-                <div style={loginContainerStyle}>
-                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={loginCardStyle}>
-                        <h1 style={{ color: '#000', fontWeight: '800', fontSize: '36px' }}>OERC</h1>
-                        <input placeholder="Username" onChange={e => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
-                        <input type="password" placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} style={inputStyle} />
-                        <button onClick={isRegistering ? () => { } : () => handleLogin()} style={primaryBtnStyle}>
-                            {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
-                        </button>
-                    </motion.div>
+            <div style={sidebarStyle}>
+                <h2 style={{ color: '#000', fontWeight: '800', marginBottom: '40px', textAlign: 'center' }}>🏦 IT-CMTC</h2>
+                <div style={{ flex: 1 }}>
+                    <SidebarItem active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} label="หน้าหลัก" icon="🏠" />
+                    <SidebarItem active={activeTab === 'transfer'} onClick={() => setActiveTab('transfer')} label="โอนเหรียญ" icon="💸" />
+                    <SidebarItem active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="ประวัติธุรกรรม" icon="📜" />
                 </div>
-            ) : (
-                /* Dashboard UI */
-                <>
-                    <div style={sidebarStyle}>
-                        <h2 style={{ color: '#000', fontWeight: '800', marginBottom: '40px', textAlign: 'center' }}>🏦 IT-CMTC</h2>
-                        <div style={{ flex: 1 }}>
-                            <SidebarItem active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} label="หน้าหลัก" icon="🏠" />
-                            <SidebarItem active={activeTab === 'transfer'} onClick={() => setActiveTab('transfer')} label="โอนเหรียญ" icon="💸" />
-                            <SidebarItem active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="ประวัติธุรกรรม" icon="📜" />
-                        </div>
-                        <button onClick={handleLogout} style={logoutBtnStyle}>ออกจากระบบ</button>
-                    </div>
+                <button onClick={handleLogout} style={logoutBtnStyle}>ออกจากระบบ</button>
+            </div>
 
-                    <div style={{ flex: 1, padding: '40px', background: '#F7FAFC', overflowY: 'auto' }}>
-                        <AnimatePresence mode="wait">
-                            <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                                {activeTab === 'history' && (
-                                    <div style={cardContainer}>
-                                        <h3 style={{ color: '#000', marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>ประวัติธุรกรรม</h3>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                            <thead>
-                                                <tr style={{ textAlign: 'left', borderBottom: '2px solid #EEE' }}>
-                                                    <th style={{ padding: '15px', fontWeight: '800' }}>ประเภท</th>
-                                                    <th style={{ padding: '15px', fontWeight: '800' }}>จำนวน</th>
-                                                    <th style={{ padding: '15px', fontWeight: '800' }}>รายละเอียด</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {/* 🟢 แก้ไขจุดที่ทำให้หน้าจอมืด: ใช้ Optional Chaining และ Default Value */}
-                                                {transactions?.length > 0 ? (
-                                                    transactions.map((tx, i) => {
-                                                        const isSent = tx.from?.toLowerCase() === user?.wallet_address?.toLowerCase();
-                                                        return (
-                                                            <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
-                                                                <td style={{ padding: '15px', fontWeight: '800', color: isSent ? '#E53E3E' : '#38A169' }}>
-                                                                    {isSent ? '📤 ส่งออก' : '📥 รับเข้า'}
-                                                                </td>
-                                                                <td style={{ padding: '15px', fontWeight: '800' }}>
-                                                                    {ethers.utils.formatUnits(tx.value || '0', tx.tokenDecimal || 18)} {tx.tokenSymbol || 'OERC'}
-                                                                </td>
-                                                                <td style={{ padding: '15px' }}>
-                                                                    <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', fontWeight: '800', textDecoration: 'none' }}>🌐 Link</a>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <tr>
-                                                        <td colSpan="3" style={{ padding: '30px', textAlign: 'center', fontWeight: '800', color: '#666' }}>ยังไม่มีรายการธุรกรรม</td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                                {/* ... Tab อื่นๆ ... */}
-                            </motion.div>
-                        </AnimatePresence>
+            <div style={{ flex: 1, padding: '40px', background: '#F7FAFC', overflowY: 'auto' }}>
+                <div style={headerStyle}>
+                    <h2 style={{ color: '#000', fontWeight: '800', fontSize: '28px' }}>สวัสดี, {user?.username}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {user?.wallet_address ? (
+                            <div onClick={() => { navigator.clipboard.writeText(user.wallet_address); Swal.fire({ icon: 'success', title: 'คัดลอกแล้ว', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 }); }} style={walletBadgeStyle}>
+                                <span style={{ color: '#000', fontWeight: '800' }}>
+                                    📍 {user.wallet_address.substring(0, 8)}...{user.wallet_address.slice(-4)}
+                                </span>
+                            </div>
+                        ) : (
+                            <button onClick={handleGenerateWallet} style={genBtnStyle}>➕ สร้างกระเป๋าเงินใหม่</button>
+                        )}
                     </div>
-                </>
-            )}
+                </div>
+
+                <AnimatePresence mode="wait">
+                    <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                        {activeTab === 'overview' && (
+                            <div style={overviewGrid}>
+                                <div style={balanceCard}>
+                                    <p style={{ fontWeight: '800', fontSize: '18px' }}>ยอดเงินคงเหลือ</p>
+                                    <h1 style={{ fontSize: '56px', fontWeight: '800' }}>{balance} <span style={{ fontSize: '24px' }}>OERC</span></h1>
+                                </div>
+                                <div style={statusCard}>
+                                    <p style={{ fontWeight: '800', color: '#000' }}>สถานะระบบ</p>
+                                    <h2 style={{ color: '#38A169', fontWeight: '800', marginTop: '10px' }}>● เชื่อมต่อสำเร็จ</h2>
+                                    <p style={{ color: '#666', marginTop: '5px', fontWeight: '800' }}>Network: Sepolia Testnet</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'transfer' && (
+                            <div style={cardContainer}>
+                                <h3 style={{ color: '#000', marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>โอนเหรียญ OERC</h3>
+                                <label style={labelStyle}>เลขกระเป๋าผู้รับ</label>
+                                <input placeholder="0x..." value={walletInfo.to} onChange={e => setWalletInfo({ ...walletInfo, to: e.target.value })} style={inputStyle} />
+                                <label style={labelStyle}>จำนวนเหรียญ</label>
+                                <input type="number" placeholder="0.00" value={walletInfo.amount} onChange={e => setWalletInfo({ ...walletInfo, amount: e.target.value })} style={inputStyle} />
+                                <button onClick={handleTransfer} style={primaryBtnStyle}>ยืนยันการโอน</button>
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div style={cardContainer}>
+                                <h3 style={{ color: '#000', marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>ประวัติธุรกรรม</h3>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ textAlign: 'left', borderBottom: '2px solid #EEE' }}>
+                                                <th style={{ padding: '15px', fontWeight: '800' }}>ประเภท</th>
+                                                <th style={{ padding: '15px', fontWeight: '800' }}>จำนวน</th>
+                                                <th style={{ padding: '15px', fontWeight: '800' }}>รายละเอียด</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {transactions?.length > 0 ? (
+                                                transactions.map((tx, i) => {
+                                                    const isSent = tx.from?.toLowerCase() === user?.wallet_address?.toLowerCase();
+                                                    const color = isSent ? '#E53E3E' : '#38A169';
+                                                    return (
+                                                        <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
+                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>{isSent ? '📤 ส่งออก' : '📥 รับเข้า'}</td>
+                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>
+                                                                {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', tx.tokenDecimal || 18)} {tx.tokenSymbol || 'OERC'}
+                                                            </td>
+                                                            <td style={{ padding: '15px' }}>
+                                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', fontWeight: '800', textDecoration: 'none' }}>🌐 Link</a>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="3" style={{ padding: '30px', textAlign: 'center', fontWeight: '800', color: '#666' }}>ยังไม่มีรายการธุรกรรม</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+            </div>
         </div>
     );
 }
 
-// --- Styles ---
+// --- Styles & Helper Components ---
 const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 20px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' };
 const loginContainerStyle = { display: 'flex', width: '100vw', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#F0F2F5' };
 const loginCardStyle = { padding: '40px', background: '#fff', borderRadius: '30px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
