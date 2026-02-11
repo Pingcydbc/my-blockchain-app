@@ -111,6 +111,30 @@ function App() {
         } catch (e) { Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error'); }
     };
 
+    // --- แก้ไขจุดนี้: ฟังก์ชัน Logout แบบยืนยัน ---
+    const handleLogout = () => {
+        Swal.fire({
+            title: 'ยืนยันการออกจากระบบ?',
+            text: "คุณต้องเข้าสู่ระบบใหม่หากต้องการทำธุรกรรมอีกครั้ง",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#4A90E2',
+            cancelButtonColor: '#E53E3E',
+            confirmButtonText: 'ใช่, ออกจากระบบ',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                localStorage.removeItem('oerc_user');
+                setUser(null);
+                setBalance('0');
+                setTransactions([]);
+                setView('login');
+                Swal.fire({ icon: 'success', title: 'ออกจากระบบแล้ว', timer: 1000, showConfirmButton: false });
+            }
+        });
+    };
+
     const handleTransfer = async () => {
         if (!walletInfo.to || !walletInfo.amount) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
         const confirm = await Swal.fire({ title: 'ยืนยันการโอน?', text: `คุณต้องการโอน ${walletInfo.amount} OERC?`, icon: 'question', showCancelButton: true });
@@ -159,7 +183,7 @@ function App() {
                     <SidebarItem active={activeTab === 'transfer'} onClick={() => setActiveTab('transfer')} label="โอนเหรียญ" icon="💸" />
                     <SidebarItem active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="ประวัติธุรกรรม" icon="📜" />
                 </div>
-                <button onClick={() => { localStorage.clear(); window.location.reload(); }} style={logoutBtnStyle}>ออกจากระบบ</button>
+                <button onClick={handleLogout} style={logoutBtnStyle}>ออกจากระบบ</button>
             </div>
 
             <div style={{ flex: 1, padding: '40px', background: '#F7FAFC', overflowY: 'auto' }}>
@@ -179,7 +203,7 @@ function App() {
                                 <div style={balanceCard}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <p style={{ fontWeight: '800', color: '#fff' }}>ยอดเงินคงเหลือ</p>
-                                        <button onClick={() => fetchData(user.wallet_address, true)} style={refreshBtnStyle}>{isRefreshing ? '⌛' : '🔄'}</button>
+                                        <button onClick={() => fetchData(user.wallet_address, true)} style={refreshBtnStyle}>🔄</button>
                                     </div>
                                     <h1 style={{ fontSize: '56px', fontWeight: '800', margin: '15px 0', color: '#fff' }}>{balance} <span style={{fontSize:'24px'}}>OERC</span></h1>
                                 </div>
@@ -254,13 +278,13 @@ const primaryBtnStyle = { width: '100%', padding: '18px', background: '#4A90E2',
 const walletBadgeStyle = { background: '#fff', padding: '12px 25px', borderRadius: '50px', border: '2px solid #E2E8F0', cursor: 'pointer' };
 const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '50px', maxWidth: '1100px', margin: '0 auto 50px auto' };
 const toggleLinkStyle = { color: '#4A90E2', marginTop: '25px', cursor: 'pointer', fontWeight: '800' };
-const logoutBtnStyle = { margin: '0 20px', padding: '16px', background: '#FFF5F5', color: '#C53030', border: 'none', borderRadius: '15px', fontWeight: '800' };
+const logoutBtnStyle = { margin: '0 20px', padding: '16px', background: '#FFF5F5', color: '#C53030', border: 'none', borderRadius: '15px', fontWeight: '800', cursor: 'pointer' };
 const overviewGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px', maxWidth: '1100px', margin: '0 auto' };
 const balanceCard = { background: 'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)', padding: '40px', borderRadius: '35px' };
 const statusCard = { background: '#fff', padding: '40px', borderRadius: '35px', border: '1px solid #E2E8F0', textAlign: 'center' };
 const cardContainer = { background: '#fff', padding: '40px', borderRadius: '35px', border: '1px solid #E2E8F0', maxWidth: '900px', margin: '0 auto' };
-const labelStyle = { display: 'block', marginBottom: '10px', fontWeight: '800' };
-const refreshBtnStyle = { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: '35px', height: '35px', borderRadius: '10px' };
+const labelStyle = { display: 'block', marginBottom: '10px', fontWeight: '800', color: '#000' };
+const refreshBtnStyle = { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: '35px', height: '35px', borderRadius: '10px', cursor: 'pointer' };
 const scanBtnStyle = { padding: '10px 20px', background: '#F0F4F8', border: 'none', borderRadius: '12px', color: '#4A90E2', fontWeight: '800' };
 const scannerOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 };
 const scannerContentStyle = { background: '#fff', padding: '25px', borderRadius: '30px', width: '90%', maxWidth: '500px' };
@@ -269,7 +293,7 @@ const iconCircle = { width: '55px', height: '55px', borderRadius: '18px', displa
 
 const SidebarItem = ({ active, label, icon, onClick }) => (
     <div onClick={onClick} style={{ margin: '0 15px 8px 15px', padding: '16px 20px', cursor: 'pointer', borderRadius: '18px', background: active ? '#4A90E2' : 'transparent', color: active ? '#fff' : '#000', fontWeight: '800', display: 'flex', gap: '15px', alignItems: 'center' }}>
-        <span style={{ fontSize: '20px' }}>{icon}</span> {label}
+        <span style={{ fontSize: '20px', color: active ? '#fff' : '#000' }}>{icon}</span> {label}
     </div>
 );
 
