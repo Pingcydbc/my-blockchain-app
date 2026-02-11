@@ -246,9 +246,9 @@ function App() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>
                                             <tr style={{ textAlign: 'left', borderBottom: '2px solid #EEE' }}>
-                                                <th style={{ padding: '15px', fontWeight: '800' }}>ประเภท</th>
-                                                <th style={{ padding: '15px', fontWeight: '800' }}>จำนวน</th>
-                                                <th style={{ padding: '15px', fontWeight: '800' }}>รายละเอียด</th>
+                                                <th style={{ padding: '15px', fontWeight: '800', color: '#000' }}>ประเภท</th>
+                                                <th style={{ padding: '15px', fontWeight: '800', color: '#000' }}>จำนวน</th>
+                                                <th style={{ padding: '15px', fontWeight: '800', color: '#000' }}>รายละเอียด</th>
                                             </tr>
                                         </thead>
                                         <tbody>
