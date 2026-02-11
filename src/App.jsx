@@ -31,26 +31,30 @@ function App() {
 
     // --- 1. ฟังก์ชันดึงข้อมูล (ดึงใหม่และล้างของเก่าเสมอ) ---
     const fetchData = useCallback(async (address) => {
-        // ล้างข้อมูลเก่าทิ้งทันทีเพื่อให้ UI เป็นปัจจุบัน
+        // ล้างข้อมูลเก่าเพื่อให้ User ไม่สับสนระหว่างรอโหลด
         setBalance('0');
         setTransactions([]);
-        
+
         if (!address) return;
 
         try {
             const provider = new ethers.providers.JsonRpcProvider("https://1rpc.io/sepolia");
             const abi = ["function balanceOf(address owner) view returns (uint256)"];
             const contract = new ethers.Contract(CONTRACT_OERC, abi, provider);
+
+            // ดึงยอดคงเหลือ
             const rawBalance = await contract.balanceOf(address);
             setBalance(ethers.utils.formatUnits(rawBalance, 18));
 
+            // ดึงประวัติธุรกรรม
             const res = await axios.get(`${API_BASE}/transactions?address=${address}`);
             if (res.data && res.data.success) {
-                // มั่นใจว่าเป็น Array และป้องกันหน้าจอมืด
-                setTransactions(Array.isArray(res.data.transactions) ? res.data.transactions : []);
+                // กรองข้อมูลให้เป็น Array เสมอ
+                const txData = Array.isArray(res.data.transactions) ? res.data.transactions : [];
+                setTransactions(txData);
             }
         } catch (e) {
-            console.error("Data Fetch Error:", e);
+            console.error("Fetch Data Error:", e);
         }
     }, [API_BASE]);
 
@@ -82,8 +86,8 @@ function App() {
             setUser(res.data);
             setView('dashboard');
             Swal.fire({ icon: 'success', title: 'ยินดีต้อนรับ', timer: 1500, showConfirmButton: false });
-        } catch (e) { 
-            Swal.fire('ผิดพลาด', 'เข้าสู่ระบบไม่สำเร็จ', 'error'); 
+        } catch (e) {
+            Swal.fire('ผิดพลาด', 'เข้าสู่ระบบไม่สำเร็จ', 'error');
         }
     };
 
@@ -92,8 +96,8 @@ function App() {
             await axios.post(`${API_BASE}/register`, formData);
             Swal.fire('สำเร็จ', 'สมัครสมาชิกแล้ว กรุณาเข้าสู่ระบบ', 'success');
             setIsRegistering(false);
-        } catch (e) { 
-            Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error'); 
+        } catch (e) {
+            Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error');
         }
     };
 
@@ -248,18 +252,24 @@ function App() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {transactions?.length > 0 ? (
+                                            {transactions.length > 0 ? (
                                                 transactions.map((tx, i) => {
+                                                    // ตรวจสอบว่า address ของ user เป็นผู้ส่ง (from) หรือไม่
                                                     const isSent = tx.from?.toLowerCase() === user?.wallet_address?.toLowerCase();
                                                     const color = isSent ? '#E53E3E' : '#38A169';
+
                                                     return (
                                                         <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
-                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>{isSent ? '📤 ส่งออก' : '📥 รับเข้า'}</td>
+                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>
+                                                                {isSent ? '📤 ส่งออก' : '📥 รับเข้า'}
+                                                            </td>
                                                             <td style={{ padding: '15px', fontWeight: '800', color: color }}>
                                                                 {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', tx.tokenDecimal || 18)} {tx.tokenSymbol || 'OERC'}
                                                             </td>
                                                             <td style={{ padding: '15px' }}>
-                                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', fontWeight: '800', textDecoration: 'none' }}>🌐 Link</a>
+                                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', fontWeight: '800', textDecoration: 'none' }}>
+                                                                    🌐 Etherscan
+                                                                </a>
                                                             </td>
                                                         </tr>
                                                     );
