@@ -29,7 +29,6 @@ function App() {
     const CONTRACT_OERC = "0x718dF080ddCB27Ee16B482c638f9Ed4b11e7Daf4";
     const API_BASE = "https://my-blockchain-app-back.vercel.app";
 
-    // เช็ค Login จากเครื่อง
     useEffect(() => {
         const savedUser = localStorage.getItem('oerc_user');
         if (savedUser) {
@@ -38,7 +37,6 @@ function App() {
         }
     }, []);
 
-    // ดึงข้อมูลยอดเงินและธุรกรรม
     const fetchData = useCallback(async (address) => {
         try {
             const provider = new ethers.providers.JsonRpcProvider("https://1rpc.io/sepolia");
@@ -58,7 +56,6 @@ function App() {
         }
     }, [user, fetchData, activeTab]);
 
-    // ฟังก์ชันสร้างกระเป๋าเงิน
     const handleGenerateWallet = async () => {
         Swal.fire({
             title: 'กำลังสร้างกระเป๋า...',
@@ -101,7 +98,7 @@ function App() {
         } catch (e) { Swal.fire('ผิดพลาด', 'Login ไม่สำเร็จ', 'error'); }
     };
 
-    // --- แก้ไขฟังก์ชัน Logout ให้มีปุ่มยืนยัน ---
+    // --- 🟢 ฟังก์ชัน Logout (สีไม่จางแล้ว เพราะถูกเรียกใช้งานข้างล่าง) ---
     const handleLogout = () => {
         Swal.fire({
             title: 'ยืนยันการออกจากระบบ?',
@@ -179,14 +176,13 @@ function App() {
                     <SidebarItem active={activeTab === 'transfer'} onClick={() => setActiveTab('transfer')} label="โอนเหรียญ" icon="💸" />
                     <SidebarItem active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="ประวัติธุรกรรม" icon="📜" />
                 </div>
-                {/* --- แก้ไขการเรียกใช้งานฟังก์ชัน Logout ตรงนี้ --- */}
+                {/* 🟢 เรียกใช้ handleLogout ตรงนี้เพื่อให้ฟังก์ชันเข้ม */}
                 <button onClick={handleLogout} style={logoutBtnStyle}>ออกจากระบบ</button>
             </div>
 
             <div style={{ flex: 1, padding: '40px', background: '#F7FAFC', overflowY: 'auto' }}>
                 <div style={headerStyle}>
                     <h2 style={{ color: '#000', fontWeight: '800', fontSize: '28px' }}>สวัสดี, {user?.username}</h2>
-
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         {user?.wallet_address ? (
                             <div onClick={() => { navigator.clipboard.writeText(user.wallet_address); Swal.fire({ icon: 'success', title: 'คัดลอกแล้ว', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 }); }} style={walletBadgeStyle}>
@@ -195,9 +191,7 @@ function App() {
                                 </span>
                             </div>
                         ) : (
-                            <button onClick={handleGenerateWallet} style={genBtnStyle}>
-                                ➕ สร้างกระเป๋าเงินใหม่
-                            </button>
+                            <button onClick={handleGenerateWallet} style={genBtnStyle}>➕ สร้างกระเป๋าเงินใหม่</button>
                         )}
                     </div>
                 </div>
@@ -267,12 +261,12 @@ function App() {
     );
 }
 
-// --- Styles ---
-const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 20px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' };
+// --- Styles (คงเดิม ปรับปรุงสีและความหนา) ---
 const loginContainerStyle = { display: 'flex', width: '100vw', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#F0F2F5' };
 const loginCardStyle = { padding: '40px', background: '#fff', borderRadius: '30px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
 const inputStyle = { width: '100%', padding: '16px', marginBottom: '15px', borderRadius: '15px', border: '2px solid #E2E8F0', background: '#F8FAFC' };
 const primaryBtnStyle = { width: '100%', padding: '16px', background: '#4A90E2', color: '#fff', border: 'none', borderRadius: '15px', fontSize: '16px', cursor: 'pointer' };
+const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 20px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' };
 const walletBadgeStyle = { background: '#fff', padding: '12px 20px', borderRadius: '50px', border: '2px solid #E2E8F0', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
 const genBtnStyle = { padding: '12px 25px', background: '#38A169', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', boxShadow: '0 5px 15px rgba(56, 161, 105, 0.3)' };
 const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '50px', maxWidth: '1100px', margin: '0 auto 50px auto' };
