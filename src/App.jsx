@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import Swal from 'sweetalert2';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Html5QrcodeScanner } from "html5-qrcode"; // แก้ไขจาก html5-qr-code เป็น html5-qrcode
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 const GlobalStyles = () => (
     <style>{`
@@ -12,15 +12,14 @@ const GlobalStyles = () => (
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         html, body, #root { width: 100%; height: 100%; background: #F7FAFC; overflow: hidden; }
         input { color: #000 !important; font-size: 16px !important; font-weight: 800 !important; outline: none; }
-        button { font-weight: 800 !important; transition: all 0.2s; }
+        button { font-weight: 800 !important; transition: all 0.2s; cursor: pointer; }
         button:active { transform: scale(0.95); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 10px; }
-        /* สไตล์สำหรับตัวสแกน QR */
         #reader { border: none !important; border-radius: 20px; overflow: hidden; }
         #reader__scan_region { background: #000; }
         #reader__dashboard_section_csr button { 
-            padding: 8px 15px; background: #4A90E2; color: white; border: none; border-radius: 10px; cursor: pointer;
+            padding: 8px 15px; background: #4A90E2; color: white; border: none; border-radius: 10px; margin-top: 10px;
         }
     `}</style>
 );
@@ -35,8 +34,6 @@ function App() {
     const [transactions, setTransactions] = useState([]);
     const [activeTab, setActiveTab] = useState('overview');
     const [isRefreshing, setIsRefreshing] = useState(false);
-    
-    // --- State สำหรับระบบสแกน ---
     const [showScanner, setShowScanner] = useState(false);
     const scannerRef = useRef(null);
 
@@ -64,32 +61,27 @@ function App() {
         } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
     }, [API_BASE]);
 
-    // --- 2. Logic การสแกน QR Code ---
+    // --- 2. ระบบสแกน QR Code ---
     useEffect(() => {
         if (showScanner) {
             const scanner = new Html5QrcodeScanner("reader", {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
             });
-
             scanner.render((decodedText) => {
                 setWalletInfo(prev => ({ ...prev, to: decodedText }));
                 setShowScanner(false);
                 scanner.clear();
                 Swal.fire({ icon: 'success', title: 'สแกนสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-            }, (error) => { /* handle scan error */ });
-
+            }, (error) => {});
             scannerRef.current = scanner;
         }
-
         return () => {
-            if (scannerRef.current) {
-                scannerRef.current.clear().catch(e => console.error(e));
-            }
+            if (scannerRef.current) scannerRef.current.clear().catch(() => {});
         };
     }, [showScanner]);
 
-    // --- 3. การจัดการ Session และ State เดิม ---
+    // --- 3. การจัดการ Session ---
     useEffect(() => {
         const savedUser = localStorage.getItem('oerc_user');
         if (savedUser) {
@@ -102,25 +94,88 @@ function App() {
         if (user && user.wallet_address) fetchData(user.wallet_address);
     }, [user, fetchData, activeTab]);
 
-    // --- ฟังก์ชัน handle ต่างๆ (คงเดิมจากที่คุณส่งมา) ---
-    const handleLogin = async () => { /* ... โค้ดเดิมของคุณ ... */ };
-    const handleRegister = async () => { /* ... โค้ดเดิมของคุณ ... */ };
-    const handleLogout = () => { /* ... โค้ดเดิมของคุณ ... */ };
-    const handleGenerateWallet = async () => { /* ... โค้ดเดิมของคุณ ... */ };
-    const handleTransfer = async () => { /* ... โค้ดเดิมของคุณ ... */ };
+    // --- 4. ฟังก์ชันระบบ ---
+    const handleLogin = async () => {
+        if (!formData.username || !formData.password) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
+        try {
+            const res = await axios.post(`${API_BASE}/login`, formData);
+            localStorage.setItem('oerc_user', JSON.stringify(res.data));
+            setUser(res.data);
+            setView('dashboard');
+            Swal.fire({ icon: 'success', title: 'ยินดีต้อนรับ', timer: 1500, showConfirmButton: false });
+        } catch (e) { Swal.fire('ผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'error'); }
+    };
 
+    const handleRegister = async () => {
+        if (!formData.username || !formData.password) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
+        try {
+            await axios.post(`${API_BASE}/register`, formData);
+            Swal.fire('สำเร็จ', 'สมัครสมาชิกแล้ว กรุณาเข้าสู่ระบบ', 'success');
+            setIsRegistering(false);
+        } catch (e) { Swal.fire('ผิดพลาด', 'สมัครสมาชิกไม่สำเร็จ', 'error'); }
+    };
+
+    const handleLogout = () => {
+        Swal.fire({
+            title: 'ยืนยันการออกจากระบบ?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่, ออกจากระบบ',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                localStorage.removeItem('oerc_user');
+                setUser(null);
+                setBalance('0');
+                setTransactions([]);
+                setView('login');
+            }
+        });
+    };
+
+    const handleGenerateWallet = async () => {
+        Swal.fire({ title: 'กำลังสร้างกระเป๋า...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const res = await axios.post(`${API_BASE}/generate-wallet`, { username: user.username });
+            if (res.data.address) {
+                const updatedUser = { ...user, wallet_address: res.data.address };
+                localStorage.setItem('oerc_user', JSON.stringify(updatedUser));
+                setUser(updatedUser);
+                await Swal.fire({ icon: 'success', title: 'สำเร็จ!', timer: 1500, showConfirmButton: false });
+                window.location.reload();
+            }
+        } catch (e) { Swal.close(); Swal.fire('ผิดพลาด', 'สร้างกระเป๋าไม่สำเร็จ', 'error'); }
+    };
+
+    const handleTransfer = async () => {
+        if (!walletInfo.to || !walletInfo.amount) return Swal.fire('เตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
+        const confirm = await Swal.fire({ title: 'ยืนยันการโอน?', text: `โอน ${walletInfo.amount} OERC?`, icon: 'question', showCancelButton: true });
+        if (!confirm.isConfirmed) return;
+
+        Swal.fire({ title: 'กำลังประมวลผล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const res = await axios.post(`${API_BASE}/transfer`, {
+                fromUsername: user.username,
+                toAddress: walletInfo.to,
+                amount: walletInfo.amount
+            });
+            Swal.fire({ icon: 'success', title: 'โอนสำเร็จ!', text: `Hash: ${res.data.hash.substring(0,15)}...` });
+            setWalletInfo({ to: '', amount: '' });
+            fetchData(user.wallet_address);
+        } catch (e) { Swal.fire('ล้มเหลว', 'ยอดเงินไม่พอหรือเกิดข้อผิดพลาด', 'error'); }
+    };
+
+    // --- UI Rendering ---
     if (view === 'login') {
         return (
             <div style={loginContainerStyle}>
                 <GlobalStyles />
                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={loginCardStyle}>
-                    <h1 style={{ color: '#000', fontWeight: '800', fontSize: '36px' }}>OERC</h1>
-                    <p style={{ color: '#666', margin: '10px 0 30px 0', fontWeight: '600' }}>ระบบจัดการเหรียญ IT-CMTC</p>
+                    <h1 style={{ fontWeight: '800', fontSize: '36px' }}>OERC</h1>
+                    <p style={{ color: '#666', margin: '10px 0 30px 0' }}>{isRegistering ? 'สร้างบัญชีใหม่' : 'เข้าสู่ระบบ IT-CMTC'}</p>
                     <input placeholder="Username" onChange={e => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
                     <input type="password" placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} style={inputStyle} />
-                    <button onClick={isRegistering ? handleRegister : handleLogin} style={primaryBtnStyle}>
-                        {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
-                    </button>
+                    <button onClick={isRegistering ? handleRegister : handleLogin} style={primaryBtnStyle}>{isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</button>
                     <p onClick={() => setIsRegistering(!isRegistering)} style={toggleLinkStyle}>
                         {isRegistering ? 'มีบัญชีแล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่'}
                     </p>
@@ -154,7 +209,6 @@ function App() {
 
                 <AnimatePresence mode="wait">
                     <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        
                         {activeTab === 'overview' && (
                             <div style={overviewGrid}>
                                 <div style={balanceCard}>
@@ -179,22 +233,18 @@ function App() {
                                     <h3 style={{ fontSize: '22px', fontWeight: '800' }}>ส่งเหรียญ OERC</h3>
                                     <button onClick={() => setShowScanner(true)} style={scanBtnStyle}>📷 สแกน QR Code</button>
                                 </div>
-                                
                                 <label style={labelStyle}>ที่อยู่กระเป๋าผู้รับ</label>
                                 <input placeholder="0x..." value={walletInfo.to} onChange={e => setWalletInfo({ ...walletInfo, to: e.target.value })} style={inputStyle} />
-                                
                                 <label style={labelStyle}>จำนวน</label>
                                 <input type="number" placeholder="0.00" value={walletInfo.amount} onChange={e => setWalletInfo({ ...walletInfo, amount: e.target.value })} style={inputStyle} />
-                                
                                 <button onClick={handleTransfer} style={primaryBtnStyle}>ยืนยันการโอน</button>
 
-                                {/* Modal สแกน QR Code */}
                                 {showScanner && (
                                     <div style={scannerOverlayStyle}>
                                         <div style={scannerContentStyle}>
                                             <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}>
                                                 <h3 style={{fontWeight:'800'}}>สแกนที่อยู่ผู้รับ</h3>
-                                                <button onClick={() => setShowScanner(false)} style={{border:'none', background:'none', fontSize:'24px', cursor:'pointer'}}>×</button>
+                                                <button onClick={() => setShowScanner(false)} style={{border:'none', background:'none', fontSize:'24px'}}>×</button>
                                             </div>
                                             <div id="reader"></div>
                                         </div>
@@ -219,14 +269,13 @@ function App() {
                                                 <p style={{ fontWeight: '800', fontSize: '18px', color: isSent ? '#E53E3E' : '#38A169' }}>
                                                     {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', 18)}
                                                 </p>
-                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#4A90E2', textDecoration: 'none', fontWeight: '800' }}>Blockchain ↗</a>
+                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#4A90E2', textDecoration: 'none', fontWeight: '800' }}>View ↗</a>
                                             </div>
                                         </div>
                                     );
                                 }) : <p style={{textAlign:'center', padding:'40px', fontWeight:'800', color:'#AAA'}}>ไม่มีรายการ</p>}
                             </div>
                         )}
-
                     </motion.div>
                 </AnimatePresence>
             </div>
@@ -234,7 +283,7 @@ function App() {
     );
 }
 
-// --- Styles (ยกมาจากอันเดิมของคุณ) ---
+// --- Styles ---
 const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 0', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' };
 const loginContainerStyle = { display: 'flex', width: '100vw', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#F0F2F5' };
 const loginCardStyle = { padding: '50px 40px', background: '#fff', borderRadius: '40px', width: '450px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.1)' };
@@ -252,8 +301,6 @@ const labelStyle = { display: 'block', marginBottom: '10px', fontWeight: '800', 
 const refreshBtnStyle = { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: '35px', height: '35px', borderRadius: '10px', cursor: 'pointer' };
 const txCardStyle = { display: 'flex', alignItems: 'center', padding: '20px', borderRadius: '22px', background: '#F8FAFC', marginBottom: '15px' };
 const iconCircle = { width: '55px', height: '55px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' };
-
-// --- สไตล์ใหม่สำหรับระบบสแกน ---
 const scanBtnStyle = { padding: '10px 20px', background: '#F0F4F8', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '800', color: '#4A90E2' };
 const scannerOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' };
 const scannerContentStyle = { background: '#fff', padding: '25px', borderRadius: '30px', width: '100%', maxWidth: '500px' };
