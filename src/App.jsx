@@ -39,20 +39,18 @@ function App() {
 
     const fetchData = useCallback(async (address) => {
         try {
-            const provider = new ethers.providers.JsonRpcProvider("https://1rpc.io/sepolia");
-            const abi = ["function balanceOf(address owner) view returns (uint256)"];
-            const contract = new ethers.Contract(CONTRACT_OERC, abi, provider);
-            const rawBalance = await contract.balanceOf(address);
-            setBalance(ethers.utils.formatUnits(rawBalance, 18));
-
+            // ... โค้ดดึงยอดเงินคงเดิม ...
             const res = await axios.get(`${API_BASE}/transactions?address=${address}`);
-            // ป้องกันหน้าจอมืดโดยการกำหนดค่าเริ่มต้นเป็น Array ว่างหากไม่มีข้อมูล
-            if (res.data.success) {
+
+            // ป้องกันค่า undefined ด้วยการใส่ [] สำรองไว้
+            if (res.data && res.data.success) {
                 setTransactions(res.data.transactions || []);
+            } else {
+                setTransactions([]);
             }
-        } catch (e) { 
+        } catch (e) {
             console.error("Data Fetch Error:", e);
-            setTransactions([]); // ล้างข้อมูลหากเกิด Error เพื่อป้องกัน UI ค้าง
+            setTransactions([]);
         }
     }, [API_BASE]);
 
@@ -229,40 +227,49 @@ function App() {
                         {activeTab === 'history' && (
                             <div style={cardContainer}>
                                 <h3 style={{ color: '#000', marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>ประวัติธุรกรรม</h3>
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                        <thead>
-                                            <tr style={{ textAlign: 'left', borderBottom: '2px solid #EEE', color: '#000' }}>
-                                                <th style={{ padding: '15px', fontWeight: '800' }}>ประเภท</th>
-                                                <th style={{ padding: '15px', fontWeight: '800' }}>จำนวน</th>
-                                                <th style={{ padding: '15px', fontWeight: '800' }}>รายละเอียด</th>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ textAlign: 'left', borderBottom: '2px solid #EEE', color: '#000' }}>
+                                            <th style={{ padding: '15px', fontWeight: '800' }}>ประเภท</th>
+                                            <th style={{ padding: '15px', fontWeight: '800' }}>จำนวน</th>
+                                            <th style={{ padding: '15px', fontWeight: '800' }}>รายละเอียด</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {/* ใช้ Optional Chaining และตรวจสอบความยาวของ Array */}
+                                        {transactions?.length > 0 ? (
+                                            transactions.map((tx, i) => {
+                                                const isSent = tx.from?.toLowerCase() === user?.wallet_address?.toLowerCase();
+                                                const color = isSent ? '#E53E3E' : '#38A169';
+
+                                                // Etherscan มักใช้ชื่อฟิลด์เหล่านี้: value, tokenDecimal, tokenSymbol
+                                                const displayValue = tx.value ? ethers.utils.formatUnits(tx.value, tx.tokenDecimal || 18) : "0";
+
+                                                return (
+                                                    <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
+                                                        <td style={{ padding: '15px', fontWeight: '800', color: color }}>
+                                                            {isSent ? '📤 ส่งออก' : '📥 รับเข้า'}
+                                                        </td>
+                                                        <td style={{ padding: '15px', fontWeight: '800', color: color }}>
+                                                            {isSent ? '-' : '+'} {displayValue} {tx.tokenSymbol || 'OERC'}
+                                                        </td>
+                                                        <td style={{ padding: '15px' }}>
+                                                            <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', textDecoration: 'none', fontWeight: '800' }}>
+                                                                🌐 Etherscan
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="3" style={{ padding: '30px', textAlign: 'center', fontWeight: '800', color: '#666' }}>
+                                                    ไม่พบรายการธุรกรรม
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {transactions && transactions.length > 0 ? (
-                                                transactions.map((tx, i) => {
-                                                    const isSent = tx.from.toLowerCase() === user?.wallet_address?.toLowerCase();
-                                                    const color = isSent ? '#E53E3E' : '#38A169';
-                                                    return (
-                                                        <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
-                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>{isSent ? '📤 ส่งออก' : '📥 รับเข้า'}</td>
-                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>
-                                                                {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value, tx.tokenDecimal || 18)} {tx.tokenSymbol || 'OERC'}
-                                                            </td>
-                                                            <td style={{ padding: '15px' }}>
-                                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', textDecoration: 'none', fontWeight: '800' }}>🌐 Etherscan</a>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan="3" style={{ padding: '30px', textAlign: 'center', fontWeight: '800', color: '#666' }}>ยังไม่มีรายการธุรกรรม</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </motion.div>
