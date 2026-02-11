@@ -9,7 +9,7 @@ const GlobalStyles = () => (
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         html, body, #root { width: 100%; height: 100%; background: #F7FAFC; overflow: hidden; }
-        input { color: #000 !important; font-size: 16px !important; font-weight: 700 !important; }
+        input { color: #000 !important; font-size: 16px !important; font-weight: 800 !important; }
         button { font-weight: 800 !important; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 10px; }
@@ -46,8 +46,14 @@ function App() {
             setBalance(ethers.utils.formatUnits(rawBalance, 18));
 
             const res = await axios.get(`${API_BASE}/transactions?address=${address}`);
-            if (res.data.success) setTransactions(res.data.transactions);
-        } catch (e) { console.error("Data Fetch Error:", e); }
+            // ป้องกันหน้าจอมืดโดยการกำหนดค่าเริ่มต้นเป็น Array ว่างหากไม่มีข้อมูล
+            if (res.data.success) {
+                setTransactions(res.data.transactions || []);
+            }
+        } catch (e) { 
+            console.error("Data Fetch Error:", e);
+            setTransactions([]); // ล้างข้อมูลหากเกิด Error เพื่อป้องกัน UI ค้าง
+        }
     }, [API_BASE]);
 
     useEffect(() => {
@@ -83,7 +89,6 @@ function App() {
             }
         } catch (e) {
             Swal.close();
-            console.error(e);
             Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการสร้างกระเป๋า', 'error');
         }
     };
@@ -98,7 +103,6 @@ function App() {
         } catch (e) { Swal.fire('ผิดพลาด', 'Login ไม่สำเร็จ', 'error'); }
     };
 
-    // --- 🟢 ฟังก์ชัน Logout (สีไม่จางแล้ว เพราะถูกเรียกใช้งานข้างล่าง) ---
     const handleLogout = () => {
         Swal.fire({
             title: 'ยืนยันการออกจากระบบ?',
@@ -150,7 +154,7 @@ function App() {
                 <GlobalStyles />
                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={loginCardStyle}>
                     <h1 style={{ color: '#000', fontWeight: '800', fontSize: '36px' }}>OERC</h1>
-                    <p style={{ color: '#000', margin: '20px 0', fontWeight: '700' }}>
+                    <p style={{ color: '#000', margin: '20px 0', fontWeight: '800' }}>
                         {isRegistering ? 'สร้างบัญชีใหม่' : 'เข้าสู่ระบบ IT-CMTC'}
                     </p>
                     <input placeholder="Username" onChange={e => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
@@ -176,7 +180,6 @@ function App() {
                     <SidebarItem active={activeTab === 'transfer'} onClick={() => setActiveTab('transfer')} label="โอนเหรียญ" icon="💸" />
                     <SidebarItem active={activeTab === 'history'} onClick={() => setActiveTab('history')} label="ประวัติธุรกรรม" icon="📜" />
                 </div>
-                {/* 🟢 เรียกใช้ handleLogout ตรงนี้เพื่อให้ฟังก์ชันเข้ม */}
                 <button onClick={handleLogout} style={logoutBtnStyle}>ออกจากระบบ</button>
             </div>
 
@@ -201,13 +204,13 @@ function App() {
                         {activeTab === 'overview' && (
                             <div style={overviewGrid}>
                                 <div style={balanceCard}>
-                                    <p style={{ fontWeight: '700', fontSize: '18px' }}>ยอดเงินคงเหลือ</p>
+                                    <p style={{ fontWeight: '800', fontSize: '18px' }}>ยอดเงินคงเหลือ</p>
                                     <h1 style={{ fontSize: '56px', fontWeight: '800' }}>{balance} <span style={{ fontSize: '24px' }}>OERC</span></h1>
                                 </div>
                                 <div style={statusCard}>
-                                    <p style={{ fontWeight: '700', color: '#000' }}>สถานะระบบ</p>
+                                    <p style={{ fontWeight: '800', color: '#000' }}>สถานะระบบ</p>
                                     <h2 style={{ color: '#38A169', fontWeight: '800', marginTop: '10px' }}>● เชื่อมต่อสำเร็จ</h2>
-                                    <p style={{ color: '#666', marginTop: '5px' }}>Network: Sepolia Testnet</p>
+                                    <p style={{ color: '#666', marginTop: '5px', fontWeight: '800' }}>Network: Sepolia Testnet</p>
                                 </div>
                             </div>
                         )}
@@ -226,32 +229,40 @@ function App() {
                         {activeTab === 'history' && (
                             <div style={cardContainer}>
                                 <h3 style={{ color: '#000', marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>ประวัติธุรกรรม</h3>
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead>
-                                        <tr style={{ textAlign: 'left', borderBottom: '2px solid #EEE', color: '#000' }}>
-                                            <th style={{ padding: '15px' }}>ประเภท</th>
-                                            <th style={{ padding: '15px' }}>จำนวน</th>
-                                            <th style={{ padding: '15px' }}>รายละเอียด</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {transactions.map((tx, i) => {
-                                            const isSent = tx.from.toLowerCase() === user?.wallet_address?.toLowerCase();
-                                            const color = isSent ? '#E53E3E' : '#38A169';
-                                            return (
-                                                <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
-                                                    <td style={{ padding: '15px', fontWeight: '800', color: color }}>{isSent ? '📤 ส่งออก' : '📥 รับเข้า'}</td>
-                                                    <td style={{ padding: '15px', fontWeight: '800', color: color }}>
-                                                        {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value, tx.coinDecimal)} {tx.coinSymbol}
-                                                    </td>
-                                                    <td style={{ padding: '15px' }}>
-                                                        <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', textDecoration: 'none', fontWeight: '700' }}>🌐 Etherscan</a>
-                                                    </td>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ textAlign: 'left', borderBottom: '2px solid #EEE', color: '#000' }}>
+                                                <th style={{ padding: '15px', fontWeight: '800' }}>ประเภท</th>
+                                                <th style={{ padding: '15px', fontWeight: '800' }}>จำนวน</th>
+                                                <th style={{ padding: '15px', fontWeight: '800' }}>รายละเอียด</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {transactions && transactions.length > 0 ? (
+                                                transactions.map((tx, i) => {
+                                                    const isSent = tx.from.toLowerCase() === user?.wallet_address?.toLowerCase();
+                                                    const color = isSent ? '#E53E3E' : '#38A169';
+                                                    return (
+                                                        <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
+                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>{isSent ? '📤 ส่งออก' : '📥 รับเข้า'}</td>
+                                                            <td style={{ padding: '15px', fontWeight: '800', color: color }}>
+                                                                {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value, tx.tokenDecimal || 18)} {tx.tokenSymbol || 'OERC'}
+                                                            </td>
+                                                            <td style={{ padding: '15px' }}>
+                                                                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ color: '#4A90E2', textDecoration: 'none', fontWeight: '800' }}>🌐 Etherscan</a>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="3" style={{ padding: '30px', textAlign: 'center', fontWeight: '800', color: '#666' }}>ยังไม่มีรายการธุรกรรม</td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </motion.div>
@@ -261,21 +272,21 @@ function App() {
     );
 }
 
-// --- Styles (คงเดิม ปรับปรุงสีและความหนา) ---
+// --- Styles ---
+const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 20px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' };
 const loginContainerStyle = { display: 'flex', width: '100vw', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#F0F2F5' };
 const loginCardStyle = { padding: '40px', background: '#fff', borderRadius: '30px', width: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
-const inputStyle = { width: '100%', padding: '16px', marginBottom: '15px', borderRadius: '15px', border: '2px solid #E2E8F0', background: '#F8FAFC' };
-const primaryBtnStyle = { width: '100%', padding: '16px', background: '#4A90E2', color: '#fff', border: 'none', borderRadius: '15px', fontSize: '16px', cursor: 'pointer' };
-const sidebarStyle = { width: '280px', background: '#fff', padding: '40px 20px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column' };
+const inputStyle = { width: '100%', padding: '16px', marginBottom: '15px', borderRadius: '15px', border: '2px solid #E2E8F0', background: '#F8FAFC', fontWeight: '800' };
+const primaryBtnStyle = { width: '100%', padding: '16px', background: '#4A90E2', color: '#fff', border: 'none', borderRadius: '15px', fontSize: '16px', cursor: 'pointer', fontWeight: '800' };
 const walletBadgeStyle = { background: '#fff', padding: '12px 20px', borderRadius: '50px', border: '2px solid #E2E8F0', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
-const genBtnStyle = { padding: '12px 25px', background: '#38A169', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', boxShadow: '0 5px 15px rgba(56, 161, 105, 0.3)' };
+const genBtnStyle = { padding: '12px 25px', background: '#38A169', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', boxShadow: '0 5px 15px rgba(56, 161, 105, 0.3)', fontWeight: '800' };
 const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '50px', maxWidth: '1100px', margin: '0 auto 50px auto' };
 const toggleLinkStyle = { color: '#4A90E2', marginTop: '20px', cursor: 'pointer', fontWeight: '800' };
 const logoutBtnStyle = { padding: '16px', background: '#FFF5F5', color: '#C53030', border: 'none', borderRadius: '15px', cursor: 'pointer', marginTop: 'auto', fontWeight: '800' };
 const overviewGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px', maxWidth: '1100px', margin: '0 auto' };
 const balanceCard = { background: 'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)', padding: '40px', borderRadius: '30px', color: '#fff', boxShadow: '0 15px 30px rgba(74, 144, 226, 0.2)' };
 const statusCard = { background: '#fff', padding: '40px', borderRadius: '30px', border: '1px solid #E2E8F0' };
-const cardContainer = { background: '#fff', padding: '40px', borderRadius: '30px', border: '1px solid #E2E8F0', maxWidth: '800px', margin: '0 auto' };
+const cardContainer = { background: '#fff', padding: '40px', borderRadius: '30px', border: '1px solid #E2E8F0', maxWidth: '900px', margin: '0 auto' };
 const labelStyle = { display: 'block', marginBottom: '10px', color: '#000', fontWeight: '800', fontSize: '14px' };
 
 const SidebarItem = ({ active, label, icon, onClick }) => (
