@@ -247,38 +247,54 @@ function App() {
                         {activeTab === 'history' && (
                             <div style={cardContainer}>
                                 <h3 style={{ marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>ประวัติธุรกรรม</h3>
-                                {transactions.map((tx, i) => {
-                                    const isSent = tx.from?.toLowerCase() === user?.wallet_address?.toLowerCase();
-                                    // สร้าง URL สำหรับตรวจสอบบน Etherscan
-                                    const etherscanUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
 
-                                    return (
-                                        <div key={i} style={{ position: 'relative', marginBottom: '15px' }}>
-                                            <div style={txCardStyle}>
-                                                <div style={{ ...iconCircle, background: isSent ? '#FFF5F5' : '#F0FFF4' }}>{isSent ? '📤' : '📥'}</div>
-                                                <div style={{ flex: 1, marginLeft: '15px' }}>
-                                                    <p style={{ fontWeight: '800' }}>{isSent ? 'ส่งออก' : 'รับเข้า'}</p>
-                                                    <p style={{ fontSize: '12px', color: '#666' }}>{new Date(tx.timeStamp * 1000).toLocaleString()}</p>
+                                {/* ตรวจสอบว่ามีข้อมูลหรือไม่ และเป็น Array หรือไม่ */}
+                                {(!transactions || transactions.length === 0) ? (
+                                    <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                                        <p>ยังไม่มีประวัติการทำรายการ</p>
+                                    </div>
+                                ) : (
+                                    transactions.map((tx, i) => {
+                                        // ป้องกัน Error กรณี wallet_address หรือ tx.from เป็น null/undefined
+                                        const userAddr = (user?.wallet_address || "").toLowerCase();
+                                        const fromAddr = (tx?.from || "").toLowerCase();
+                                        const isSent = fromAddr === userAddr;
+
+                                        const etherscanUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
+                                        // ป้องกัน Error กรณี timeStamp ไม่มีค่า
+                                        const dateDisplay = tx.timeStamp
+                                            ? new Date(tx.timeStamp * 1000).toLocaleString()
+                                            : 'ไม่ทราบเวลา';
+
+                                        return (
+                                            <div key={tx.hash || i} style={{ position: 'relative', marginBottom: '15px' }}>
+                                                <div style={txCardStyle}>
+                                                    <div style={{ ...iconCircle, background: isSent ? '#FFF5F5' : '#F0FFF4' }}>
+                                                        {isSent ? '📤' : '📥'}
+                                                    </div>
+                                                    <div style={{ flex: 1, marginLeft: '15px' }}>
+                                                        <p style={{ fontWeight: '800' }}>{isSent ? 'ส่งออก' : 'รับเข้า'}</p>
+                                                        <p style={{ fontSize: '12px', color: '#666' }}>{dateDisplay}</p>
+                                                    </div>
+                                                    <div style={{ textAlign: 'right', marginRight: '15px' }}>
+                                                        <p style={{ fontWeight: '800', fontSize: '18px', color: isSent ? '#E53E3E' : '#38A169' }}>
+                                                            {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', 18)}
+                                                        </p>
+                                                    </div>
+                                                    <a
+                                                        href={etherscanUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={viewDetailsBtnStyle}
+                                                        title="ดูบน Etherscan"
+                                                    >
+                                                        🔗
+                                                    </a>
                                                 </div>
-                                                <div style={{ textAlign: 'right', marginRight: '15px' }}>
-                                                    <p style={{ fontWeight: '800', fontSize: '18px', color: isSent ? '#E53E3E' : '#38A169' }}>
-                                                        {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', 18)}
-                                                    </p>
-                                                </div>
-                                                {/* เพิ่มปุ่มลิงค์ไป Etherscan */}
-                                                <a
-                                                    href={etherscanUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={viewDetailsBtnStyle}
-                                                    title="ดูบน Etherscan"
-                                                >
-                                                    🔗
-                                                </a>
                                             </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })
+                                )}
                             </div>
                         )}
                     </motion.div>
