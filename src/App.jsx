@@ -133,7 +133,7 @@ function App() {
                 toAddress: walletInfo.to,
                 amount: walletInfo.amount
             });
-            Swal.fire('สำเร็จ!', `Hash: ${res.data.hash.substring(0,10)}...`, 'success');
+            Swal.fire('สำเร็จ!', `Hash: ${res.data.hash.substring(0, 10)}...`, 'success');
             setWalletInfo({ to: '', amount: '' });
             fetchData(user.wallet_address);
         } catch (e) { Swal.fire('ล้มเหลว', 'โอนไม่สำเร็จ', 'error'); }
@@ -147,10 +147,10 @@ function App() {
                 setWalletInfo(prev => ({ ...prev, to: text }));
                 setShowScanner(false);
                 scanner.clear();
-            }, () => {});
+            }, () => { });
             scannerRef.current = scanner;
         }
-        return () => { if (scannerRef.current) scannerRef.current.clear().catch(() => {}); };
+        return () => { if (scannerRef.current) scannerRef.current.clear().catch(() => { }); };
     }, [showScanner]);
 
     if (view === 'login') {
@@ -163,7 +163,7 @@ function App() {
                     <input placeholder="Username" onChange={e => setFormData({ ...formData, username: e.target.value })} style={inputStyle} />
                     <input type="password" placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} style={inputStyle} />
                     <button onClick={isRegistering ? handleRegister : handleLogin} style={primaryBtnStyle}>
-                        <span style={{color: '#fff'}}>{isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</span>
+                        <span style={{ color: '#fff' }}>{isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</span>
                     </button>
                     <p onClick={() => setIsRegistering(!isRegistering)} style={toggleLinkStyle}>
                         {isRegistering ? 'มีบัญชีแล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครที่นี่'}
@@ -190,8 +190,8 @@ function App() {
                 <div style={headerStyle}>
                     <div><h2 style={{ fontWeight: '800', fontSize: '28px' }}>สวัสดี, {user?.username}</h2></div>
                     {user?.wallet_address ? (
-                        <div onClick={() => { navigator.clipboard.writeText(user.wallet_address); Swal.fire({icon:'success', title:'คัดลอกแล้ว', toast:true, position:'top-end', showConfirmButton:false, timer:1500}); }} style={walletBadgeStyle}>
-                            <span style={{fontWeight: '800'}}>📍 {user.wallet_address.substring(0, 8)}...{user.wallet_address.slice(-4)}</span>
+                        <div onClick={() => { navigator.clipboard.writeText(user.wallet_address); Swal.fire({ icon: 'success', title: 'คัดลอกแล้ว', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 }); }} style={walletBadgeStyle}>
+                            <span style={{ fontWeight: '800' }}>📍 {user.wallet_address.substring(0, 8)}...{user.wallet_address.slice(-4)}</span>
                         </div>
                     ) : (
                         <button onClick={handleGenerateWallet} style={genBtnStyle}>➕ สร้างกระเป๋าเงินใหม่</button>
@@ -209,7 +209,7 @@ function App() {
                                             <span className={isRefreshing ? "spinning" : ""} style={{ display: 'inline-block', fontSize: '20px', color: '#fff' }}>🔄</span>
                                         </motion.button>
                                     </div>
-                                    <h1 style={{ fontSize: '56px', fontWeight: '800', margin: '15px 0', color: '#fff' }}>{balance} <span style={{fontSize:'24px', opacity: 0.8}}>OERC</span></h1>
+                                    <h1 style={{ fontSize: '56px', fontWeight: '800', margin: '15px 0', color: '#fff' }}>{balance} <span style={{ fontSize: '24px', opacity: 0.8 }}>OERC</span></h1>
                                 </div>
                                 <div style={statusCard}>
                                     <p style={{ fontWeight: '800', marginBottom: '15px' }}>QR Code รับเงิน</p>
@@ -230,13 +230,13 @@ function App() {
                                 <input placeholder="0x..." value={walletInfo.to} onChange={e => setWalletInfo({ ...walletInfo, to: e.target.value })} style={inputStyle} />
                                 <label style={labelStyle}>จำนวน</label>
                                 <input type="number" placeholder="0.00" value={walletInfo.amount} onChange={e => setWalletInfo({ ...walletInfo, amount: e.target.value })} style={inputStyle} />
-                                <button onClick={handleTransfer} style={primaryBtnStyle}><span style={{color:'#fff'}}>ยืนยันการโอน</span></button>
+                                <button onClick={handleTransfer} style={primaryBtnStyle}><span style={{ color: '#fff' }}>ยืนยันการโอน</span></button>
 
                                 {showScanner && (
                                     <div style={scannerOverlayStyle}>
                                         <div style={scannerContentStyle}>
-                                            <button onClick={() => setShowScanner(false)} style={{float:'right', background:'none', fontSize:'24px'}}>×</button>
-                                            <h3 style={{fontWeight:'800', marginBottom:'15px'}}>สแกนที่อยู่ผู้รับ</h3>
+                                            <button onClick={() => setShowScanner(false)} style={{ float: 'right', background: 'none', fontSize: '24px' }}>×</button>
+                                            <h3 style={{ fontWeight: '800', marginBottom: '15px' }}>สแกนที่อยู่ผู้รับ</h3>
                                             <div id="reader"></div>
                                         </div>
                                     </div>
@@ -249,17 +249,32 @@ function App() {
                                 <h3 style={{ marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>ประวัติธุรกรรม</h3>
                                 {transactions.map((tx, i) => {
                                     const isSent = tx.from?.toLowerCase() === user?.wallet_address?.toLowerCase();
+                                    // สร้าง URL สำหรับตรวจสอบบน Etherscan
+                                    const etherscanUrl = `https://sepolia.etherscan.io/tx/${tx.hash}`;
+
                                     return (
-                                        <div key={i} style={txCardStyle}>
-                                            <div style={{ ...iconCircle, background: isSent ? '#FFF5F5' : '#F0FFF4' }}>{isSent ? '📤' : '📥'}</div>
-                                            <div style={{ flex: 1, marginLeft: '15px' }}>
-                                                <p style={{ fontWeight: '800' }}>{isSent ? 'ส่งออก' : 'รับเข้า'}</p>
-                                                <p style={{ fontSize: '12px', color: '#666' }}>{new Date(tx.timeStamp * 1000).toLocaleString()}</p>
-                                            </div>
-                                            <div style={{ textAlign: 'right' }}>
-                                                <p style={{ fontWeight: '800', fontSize: '18px', color: isSent ? '#E53E3E' : '#38A169' }}>
-                                                    {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', 18)}
-                                                </p>
+                                        <div key={i} style={{ position: 'relative', marginBottom: '15px' }}>
+                                            <div style={txCardStyle}>
+                                                <div style={{ ...iconCircle, background: isSent ? '#FFF5F5' : '#F0FFF4' }}>{isSent ? '📤' : '📥'}</div>
+                                                <div style={{ flex: 1, marginLeft: '15px' }}>
+                                                    <p style={{ fontWeight: '800' }}>{isSent ? 'ส่งออก' : 'รับเข้า'}</p>
+                                                    <p style={{ fontSize: '12px', color: '#666' }}>{new Date(tx.timeStamp * 1000).toLocaleString()}</p>
+                                                </div>
+                                                <div style={{ textAlign: 'right', marginRight: '15px' }}>
+                                                    <p style={{ fontWeight: '800', fontSize: '18px', color: isSent ? '#E53E3E' : '#38A169' }}>
+                                                        {isSent ? '-' : '+'} {ethers.utils.formatUnits(tx.value || '0', 18)}
+                                                    </p>
+                                                </div>
+                                                {/* เพิ่มปุ่มลิงค์ไป Etherscan */}
+                                                <a
+                                                    href={etherscanUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={viewDetailsBtnStyle}
+                                                    title="ดูบน Etherscan"
+                                                >
+                                                    🔗
+                                                </a>
                                             </div>
                                         </div>
                                     );
