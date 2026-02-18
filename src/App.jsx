@@ -243,7 +243,6 @@ function App() {
                                 )}
                             </div>
                         )}
-
                         {activeTab === 'history' && (
                             <div style={cardContainer}>
                                 <h3 style={{ marginBottom: '25px', fontSize: '22px', fontWeight: '800' }}>ประวัติธุรกรรม</h3>
@@ -326,7 +325,19 @@ const scannerOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bott
 const scannerContentStyle = { background: '#fff', padding: '25px', borderRadius: '30px', width: '90%', maxWidth: '500px' };
 const txCardStyle = { display: 'flex', alignItems: 'center', padding: '20px', borderRadius: '22px', background: '#fff', border: '1px solid #F0F4F8', marginBottom: '15px' };
 const iconCircle = { width: '55px', height: '55px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' };
-
+const viewDetailsBtnStyle = {
+    textDecoration: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '35px',
+    height: '35px',
+    borderRadius: '10px',
+    background: '#F7FAFC',
+    border: '1px solid #E2E8F0',
+    fontSize: '16px',
+    cursor: 'pointer'
+};
 const SidebarItem = ({ active, label, icon, onClick }) => (
     <div onClick={onClick} style={{ margin: '0 15px 8px 15px', padding: '16px 20px', cursor: 'pointer', borderRadius: '18px', background: active ? '#4A90E2' : 'transparent', color: active ? '#fff' : '#000', fontWeight: '800', display: 'flex', gap: '15px', alignItems: 'center' }}>
         <span style={{ fontSize: '20px', color: active ? '#fff' : '#000' }}>{icon}</span> {label}
